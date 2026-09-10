@@ -68,7 +68,16 @@ public class DataLoader {
 
                 String type = readColOrNull(row, index, "type");
                 String desc = readColOrNull(row, index, "desc");
-                nodes.add(new Node(id.trim(), name == null ? "" : name.trim(), lat, lng, type, desc));
+                String region = readColOrNull(row, index, "region");
+                String openTime = readColOrNull(row, index, "open_time");
+                if (openTime == null) {
+                    openTime = readColOrNull(row, index, "openTime");
+                }
+                Integer stayMinutes = readIntOrNull(row, index, "stay_minutes");
+                if (stayMinutes == null) {
+                    stayMinutes = readIntOrNull(row, index, "stayMinutes");
+                }
+                nodes.add(new Node(id.trim(), name == null ? "" : name.trim(), lat, lng, type, region, openTime, stayMinutes, desc));
             }
         } catch (Exception e) {
             throw new IllegalStateException("读取 nodes.csv 失败", e);
@@ -170,6 +179,18 @@ public class DataLoader {
         }
         try {
             return Double.parseDouble(raw);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private static Integer readIntOrNull(String[] row, Map<String, Integer> index, String key) {
+        String raw = readColOrNull(row, index, key);
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        try {
+            return Integer.parseInt(raw);
         } catch (NumberFormatException e) {
             return null;
         }

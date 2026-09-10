@@ -6,7 +6,7 @@ import marker2x from "leaflet/dist/images/marker-icon-2x.png";
 import marker from "leaflet/dist/images/marker-icon.png";
 import shadow from "leaflet/dist/images/marker-shadow.png";
 import { Button } from "antd";
-import { useTravelStore } from "@/stores/useTravelStore";
+import { hasCoords, useTravelStore } from "@/stores/useTravelStore";
 
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: marker2x,
@@ -33,9 +33,11 @@ export default function MapContainer() {
   const route = useTravelStore((s) => s.route);
 
   const center: [number, number] = [29.56301, 106.57577];
+  // 坐标缺失的景点不在地图上渲染，也不参与路径计算
+  const mappableNodes = useMemo(() => nodes.filter(hasCoords), [nodes]);
   const routePoints = useMemo(() => {
     if (!route) return [] as Array<[number, number]>;
-    return route.pathNodes.map((n) => [n.lat, n.lng] as [number, number]);
+    return route.pathNodes.filter(hasCoords).map((n) => [n.lat, n.lng] as [number, number]);
   }, [route]);
 
   return (
@@ -45,7 +47,7 @@ export default function MapContainer() {
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
 
-      {nodes.map((n) => {
+      {mappableNodes.map((n) => {
         const isStart = n.id === startId;
         const isEnd = n.id === endId;
         let icon: L.Icon | L.DivIcon | undefined;
@@ -67,11 +69,14 @@ export default function MapContainer() {
           });
         }
         return (
-          <Marker key={n.id} position={[n.lat, n.lng]} {...(icon ? { icon } : {})}>
+          <Marker key={n.id} position={[n.lat as number, n.lng as number]} {...(icon ? { icon } : {})}>
             <Popup>
               <div className="min-w-[220px]">
                 <div className="text-sm font-semibold text-slate-900">{n.name}</div>
+                {n.region ? <div className="mt-0.5 text-xs text-slate-500">{n.region}</div> : null}
                 {n.desc ? <div className="mt-1 text-xs text-slate-600">{n.desc}</div> : null}
+                {n.openTime ? <div className="mt-1 text-xs text-slate-500">开放时间：{n.openTime}</div> : null}
+                {n.stayMinutes ? <div className="mt-0.5 text-xs text-slate-500">建议停留：{n.stayMinutes} 分钟</div> : null}
                 <div className="mt-3 grid grid-cols-2 gap-2">
                   <Button size="small" onClick={() => setStartId(n.id)}>
                     设为起点

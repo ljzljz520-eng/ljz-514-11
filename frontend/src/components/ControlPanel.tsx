@@ -1,7 +1,8 @@
-import { Button, Divider, Select, Skeleton, Typography } from "antd";
-import { ArrowLeftRight, Route, X } from "lucide-react";
+import { Button, Divider, Select, Skeleton, Tag, Typography } from "antd";
+import { ArrowLeftRight, Route, Settings, X } from "lucide-react";
 import { useMemo, useState } from "react";
-import { useTravelStore } from "@/stores/useTravelStore";
+import { Link } from "react-router-dom";
+import { hasCoords, useTravelStore } from "@/stores/useTravelStore";
 
 const { Text } = Typography;
 
@@ -23,7 +24,14 @@ export default function ControlPanel() {
   const options = useMemo(() => {
     const k = keyword.trim().toLowerCase();
     const list = k ? nodes.filter((n) => (n.name || "").toLowerCase().includes(k)) : nodes;
-    return list.map((n) => ({ label: n.name || n.id, value: n.id }));
+    return list.map((n) => {
+      const routable = hasCoords(n);
+      return {
+        label: routable ? n.name || n.id : `${n.name || n.id}（缺坐标，不可选）`,
+        value: n.id,
+        disabled: !routable,
+      };
+    });
   }, [keyword, nodes]);
 
   const distanceText = useMemo(() => {
@@ -43,7 +51,12 @@ export default function ControlPanel() {
             <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-700">权重：地理距离</span>
           </div>
         </div>
-        <Button type="text" onClick={() => clear()} icon={<X className="h-4 w-4" />} />
+        <div className="flex items-center">
+          <Link to="/admin">
+            <Button type="text" title="景点节点管理" icon={<Settings className="h-4 w-4" />} />
+          </Link>
+          <Button type="text" onClick={() => clear()} icon={<X className="h-4 w-4" />} />
+        </div>
       </div>
 
       <Divider className="my-3" />
@@ -110,9 +123,19 @@ export default function ControlPanel() {
                         </span>
                         {n.name}
                       </div>
-                      <div className="text-xs text-slate-500">{n.type || ""}</div>
+                      <div className="flex items-center gap-1">
+                        {n.region ? <Tag className="mr-0">{n.region}</Tag> : null}
+                        {n.type ? <Tag className="mr-0" color="blue">{n.type}</Tag> : null}
+                      </div>
                     </div>
                     {n.desc ? <div className="mt-1 text-xs text-slate-600">{n.desc}</div> : null}
+                    {n.openTime || n.stayMinutes ? (
+                      <div className="mt-1 text-xs text-slate-500">
+                        {n.openTime ? `开放时间：${n.openTime}` : ""}
+                        {n.openTime && n.stayMinutes ? "　" : ""}
+                        {n.stayMinutes ? `建议停留：${n.stayMinutes} 分钟` : ""}
+                      </div>
+                    ) : null}
                     {idx > 0 ? (
                       <div className="mt-1 text-xs text-slate-500">
                         与上一点约 {Math.round(route.segmentDistanceMeters[idx - 1])} m

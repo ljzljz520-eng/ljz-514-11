@@ -52,6 +52,39 @@ public class NodeRepository {
         }
     }
 
+    public Node findById(String id) {
+        if (id == null || id.isBlank()) {
+            return null;
+        }
+        EntityManager em = emf.createEntityManager();
+        try {
+            return em.find(Node.class, id);
+        } finally {
+            em.close();
+        }
+    }
+
+    public boolean existsById(String id) {
+        return findById(id) != null;
+    }
+
+    public Node save(Node node) {
+        EntityManager em = emf.createEntityManager();
+        try {
+            em.getTransaction().begin();
+            Node merged = em.merge(node);
+            em.getTransaction().commit();
+            return merged;
+        } catch (RuntimeException e) {
+            if (em.getTransaction().isActive()) {
+                em.getTransaction().rollback();
+            }
+            throw e;
+        } finally {
+            em.close();
+        }
+    }
+
     public Map<String, Node> findAllAsMap() {
         List<Node> nodes = findAll();
         Map<String, Node> map = new HashMap<>();

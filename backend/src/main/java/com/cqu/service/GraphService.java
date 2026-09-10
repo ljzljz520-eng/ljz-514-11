@@ -14,21 +14,37 @@ import java.util.PriorityQueue;
 import java.util.Set;
 
 public class GraphService {
-    private final Map<String, Node> nodes;
-    private final Map<String, List<Neighbor>> adjacency;
+    private final List<Edge> edges;
+    private volatile Map<String, Node> nodes;
+    private volatile Map<String, Node> routableNodes;
+    private volatile Map<String, List<Neighbor>> adjacency;
 
     public GraphService(Map<String, Node> nodes) {
-        this.nodes = Map.copyOf(nodes);
-        this.adjacency = buildGraph(this.nodes);
+        this(nodes, null);
     }
 
     public GraphService(Map<String, Node> nodes, List<Edge> edges) {
-        this.nodes = Map.copyOf(nodes);
-        if (edges != null && !edges.isEmpty()) {
-            this.adjacency = buildGraphFromEdges(this.nodes, edges);
-        } else {
-            this.adjacency = buildGraph(this.nodes);
+        this.edges = edges == null ? List.of() : List.copyOf(edges);
+        reload(nodes);
+    }
+
+    /**
+     * 节点数据变更后重建图。坐标缺失的景点不参与路径计算，
+     * 但仍保留在节点列表中，供后台维护与补录坐标。
+     */
+    public final synchronized void reload(Map<String, Node> newNodes) {
+        Map<String, Node> all = Map.copyOf(newNodes);
+        Map<String, Node> routable = new HashMap<>();
+        for (Node n : all.values()) {
+            if (n != null && n.hasValidCoordinates()) {
+                routable.put(n.getId(), n);
+            }
         }
+        this.nodes = all;
+        this.routableNodes = Map.copyOf(routable);
+        this.adjacency = !this.edges.isEmpty()
+                ? buildGraphFromEdges(this.routableNodes, this.edges)
+                : buildGraph(this.routableNodes);
     }
 
     public List<Node> listNodes() {
@@ -36,12 +52,18 @@ public class GraphService {
     }
 
     public PathResult shortestPath(String fromId, String toId) {
+        Map<String, Node> routable = this.routableNodes;
+        Map<String, List<Neighbor>> adj = this.adjacency;
+
         if (fromId == null || toId == null || !nodes.containsKey(fromId) || !nodes.containsKey(toId)) {
             throw new IllegalArgumentException("起点或终点不存在");
         }
+        if (!routable.containsKey(fromId) || !routable.containsKey(toId)) {
+            throw new IllegalArgumentException("起点或终点缺少坐标，无法参与路径计算");
+        }
         if (fromId.equals(toId)) {
             List<String> ids = List.of(fromId);
-            List<Node> ns = List.of(nodes.get(fromId));
+            List<Node> ns = List.of(routable.get(fromId));
             return new PathResult(fromId, toId, 0.0, ids, ns, List.of());
         }
 
@@ -49,7 +71,7 @@ public class GraphService {
         Map<String, String> prev = new HashMap<>();
         PriorityQueue<State> pq = new PriorityQueue<>(Comparator.comparingDouble(s -> s.distance));
 
-        for (String id : nodes.keySet()) {
+        for (String id : routable.keySet()) {
             dist.put(id, Double.POSITIVE_INFINITY);
         }
         dist.put(fromId, 0.0);
@@ -63,7 +85,7 @@ public class GraphService {
             if (cur.id.equals(toId)) {
                 break;
             }
-            List<Neighbor> neighbors = adjacency.getOrDefault(cur.id, List.of());
+            List<Neighbor> neighbors = adj.getOrDefault(cur.id, List.of());
             for (Neighbor nb : neighbors) {
                 double nd = cur.distance + nb.weightMeters;
                 if (nd < dist.get(nb.toId)) {
@@ -90,20 +112,20 @@ public class GraphService {
         }
         java.util.Collections.reverse(pathIds);
 
-        List<Node> pathNodes = pathIds.stream().map(nodes::get).toList();
+        List<Node> pathNodes = pathIds.stream().map(routable::get).toList();
         List<Double> segments = new ArrayList<>();
         double total = dist.getOrDefault(toId, Double.POSITIVE_INFINITY);
         for (int i = 1; i < pathNodes.size(); i++) {
             Node a = pathNodes.get(i - 1);
             Node b = pathNodes.get(i);
-            segments.add(weightBetween(a.getId(), b.getId(), a.getLat(), a.getLng(), b.getLat(), b.getLng()));
+            segments.add(weightBetween(adj, a.getId(), b.getId(), a.getLat(), a.getLng(), b.getLat(), b.getLng()));
         }
 
         return new PathResult(fromId, toId, total, pathIds, pathNodes, segments);
     }
 
-    private double weightBetween(String fromId, String toId, double fromLat, double fromLng, double toLat, double toLng) {
-        for (Neighbor nb : adjacency.getOrDefault(fromId, List.of())) {
+    private double weightBetween(Map<String, List<Neighbor>> adj, String fromId, String toId, double fromLat, double fromLng, double toLat, double toLng) {
+        for (Neighbor nb : adj.getOrDefault(fromId, List.of())) {
             if (nb.toId.equals(toId)) {
                 return nb.weightMeters;
             }

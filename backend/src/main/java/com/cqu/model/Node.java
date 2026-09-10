@@ -15,14 +15,23 @@ public class Node {
     @Column(name = "name", nullable = false)
     private String name;
 
-    @Column(name = "lat", nullable = false)
-    private double lat;
+    @Column(name = "lat")
+    private Double lat;
 
-    @Column(name = "lng", nullable = false)
-    private double lng;
+    @Column(name = "lng")
+    private Double lng;
 
     @Column(name = "node_type")
     private String type;
+
+    @Column(name = "region")
+    private String region;
+
+    @Column(name = "open_time")
+    private String openTime;
+
+    @Column(name = "stay_minutes")
+    private Integer stayMinutes;
 
     @Column(name = "description", length = 2000)
     private String desc;
@@ -30,13 +39,35 @@ public class Node {
     public Node() {
     }
 
-    public Node(String id, String name, double lat, double lng, String type, String desc) {
+    public Node(String id, String name, Double lat, Double lng, String type, String desc) {
         this.id = id;
         this.name = name;
         this.lat = lat;
         this.lng = lng;
         this.type = type;
         this.desc = desc;
+    }
+
+    public Node(String id, String name, Double lat, Double lng, String type, String region,
+                String openTime, Integer stayMinutes, String desc) {
+        this.id = id;
+        this.name = name;
+        this.lat = lat;
+        this.lng = lng;
+        this.type = type;
+        this.region = region;
+        this.openTime = openTime;
+        this.stayMinutes = stayMinutes;
+        this.desc = desc;
+    }
+
+    /**
+     * 坐标是否完整有效；缺失坐标的景点不参与路径计算。
+     */
+    public boolean hasValidCoordinates() {
+        return lat != null && lng != null
+                && !Double.isNaN(lat) && !Double.isNaN(lng)
+                && !Double.isInfinite(lat) && !Double.isInfinite(lng);
     }
 
     public String getId() {
@@ -55,19 +86,19 @@ public class Node {
         this.name = name;
     }
 
-    public double getLat() {
+    public Double getLat() {
         return lat;
     }
 
-    public void setLat(double lat) {
+    public void setLat(Double lat) {
         this.lat = lat;
     }
 
-    public double getLng() {
+    public Double getLng() {
         return lng;
     }
 
-    public void setLng(double lng) {
+    public void setLng(Double lng) {
         this.lng = lng;
     }
 
@@ -77,6 +108,30 @@ public class Node {
 
     public void setType(String type) {
         this.type = type;
+    }
+
+    public String getRegion() {
+        return region;
+    }
+
+    public void setRegion(String region) {
+        this.region = region;
+    }
+
+    public String getOpenTime() {
+        return openTime;
+    }
+
+    public void setOpenTime(String openTime) {
+        this.openTime = openTime;
+    }
+
+    public Integer getStayMinutes() {
+        return stayMinutes;
+    }
+
+    public void setStayMinutes(Integer stayMinutes) {
+        this.stayMinutes = stayMinutes;
     }
 
     public String getDesc() {
