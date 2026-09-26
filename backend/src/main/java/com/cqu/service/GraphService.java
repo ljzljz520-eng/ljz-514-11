@@ -8,27 +8,51 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Set;
 
 public class GraphService {
+    /**
+     * 全部节点（含坐标缺失节点），用于查询与展示。
+     */
     private final Map<String, Node> nodes;
+    /**
+     * 可参与路径计算的节点（坐标齐全）。
+     */
+    private final Map<String, Node> routableNodes;
     private final Map<String, List<Neighbor>> adjacency;
 
     public GraphService(Map<String, Node> nodes) {
         this.nodes = Map.copyOf(nodes);
-        this.adjacency = buildGraph(this.nodes);
+        this.routableNodes = filterRoutable(this.nodes);
+        this.adjacency = buildGraph(this.routableNodes);
     }
 
     public GraphService(Map<String, Node> nodes, List<Edge> edges) {
         this.nodes = Map.copyOf(nodes);
+        this.routableNodes = filterRoutable(this.nodes);
         if (edges != null && !edges.isEmpty()) {
-            this.adjacency = buildGraphFromEdges(this.nodes, edges);
+            this.adjacency = buildGraphFromEdges(this.routableNodes, edges);
         } else {
-            this.adjacency = buildGraph(this.nodes);
+            this.adjacency = buildGraph(this.routableNodes);
         }
+    }
+
+    /**
+     * 坐标缺失的景点不参与路径计算（不进图）。
+     */
+    private static Map<String, Node> filterRoutable(Map<String, Node> nodes) {
+        Map<String, Node> routable = new LinkedHashMap<>();
+        for (Map.Entry<String, Node> e : nodes.entrySet()) {
+            Node n = e.getValue();
+            if (n != null && n.hasCoordinates()) {
+                routable.put(e.getKey(), n);
+            }
+        }
+        return Map.copyOf(routable);
     }
 
     public List<Node> listNodes() {
@@ -36,12 +60,17 @@ public class GraphService {
     }
 
     public PathResult shortestPath(String fromId, String toId) {
-        if (fromId == null || toId == null || !nodes.containsKey(fromId) || !nodes.containsKey(toId)) {
+        Node from = fromId == null ? null : nodes.get(fromId);
+        Node to = toId == null ? null : nodes.get(toId);
+        if (from == null || to == null) {
             throw new IllegalArgumentException("起点或终点不存在");
+        }
+        if (!from.hasCoordinates() || !to.hasCoordinates()) {
+            throw new IllegalArgumentException("起点或终点缺少坐标，无法参与路径计算");
         }
         if (fromId.equals(toId)) {
             List<String> ids = List.of(fromId);
-            List<Node> ns = List.of(nodes.get(fromId));
+            List<Node> ns = List.of(from);
             return new PathResult(fromId, toId, 0.0, ids, ns, List.of());
         }
 
@@ -49,7 +78,7 @@ public class GraphService {
         Map<String, String> prev = new HashMap<>();
         PriorityQueue<State> pq = new PriorityQueue<>(Comparator.comparingDouble(s -> s.distance));
 
-        for (String id : nodes.keySet()) {
+        for (String id : routableNodes.keySet()) {
             dist.put(id, Double.POSITIVE_INFINITY);
         }
         dist.put(fromId, 0.0);
@@ -177,7 +206,7 @@ public class GraphService {
         }
 
         boolean ensure = Boolean.parseBoolean(System.getenv().getOrDefault("GRAPH_ENSURE_CONNECTIVITY", "true"));
-        if (ensure) {
+        if (ensure && !nodes.isEmpty()) {
             ensureConnectivity(adj, nodes);
         }
         return adj;

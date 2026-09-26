@@ -7,6 +7,7 @@ import jakarta.persistence.EntityManagerFactory;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public class NodeRepository {
     private final EntityManagerFactory emf;
@@ -20,6 +21,63 @@ public class NodeRepository {
         try {
             Long count = em.createQuery("select count(n) from Node n", Long.class).getSingleResult();
             return count != null && count > 0;
+        } finally {
+            em.close();
+        }
+    }
+
+    public Optional<Node> findById(String id) {
+        if (id == null || id.isBlank()) {
+            return Optional.empty();
+        }
+        EntityManager em = emf.createEntityManager();
+        try {
+            return Optional.ofNullable(em.find(Node.class, id));
+        } finally {
+            em.close();
+        }
+    }
+
+    /**
+     * 新增或更新（按 id merge）。
+     */
+    public Node save(Node node) {
+        EntityManager em = emf.createEntityManager();
+        try {
+            em.getTransaction().begin();
+            Node managed = em.merge(node);
+            em.getTransaction().commit();
+            return managed;
+        } catch (RuntimeException e) {
+            if (em.getTransaction().isActive()) {
+                em.getTransaction().rollback();
+            }
+            throw e;
+        } finally {
+            em.close();
+        }
+    }
+
+    /**
+     * 按 id 删除，返回是否实际删除了记录。
+     */
+    public boolean deleteById(String id) {
+        EntityManager em = emf.createEntityManager();
+        try {
+            em.getTransaction().begin();
+            Node existing = em.find(Node.class, id);
+            if (existing == null) {
+                em.getTransaction().rollback();
+                return false;
+            }
+            em.remove(existing);
+            em.getTransaction().commit();
+            return true;
+        } catch (RuntimeException e) {
+            if (em.getTransaction().isActive()) {
+                em.getTransaction().rollback();
+            }
+            throw e;
         } finally {
             em.close();
         }
@@ -61,4 +119,3 @@ public class NodeRepository {
         return map;
     }
 }
-

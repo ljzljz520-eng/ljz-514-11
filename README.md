@@ -6,10 +6,16 @@
 - 数据库：PostgreSQL 15
 
 ## 📦 数据文件
-- `backend/src/main/resources/nodes.csv`：景点节点（必需）
+- `backend/src/main/resources/nodes.csv`：景点节点（必需；含名称、经纬度、所属区域、开放时间、推荐停留时长等列）
 - `backend/src/main/resources/edges.csv`：边数据（可选，存在则优先使用；否则按地理距离自动生成边）
 
 `edges.csv` 格式：至少包含表头 `from,to`；可选第三列 `distance_meters`（若缺省则按两点经纬度计算球面距离）。
+
+## 🧩 景点节点维护
+- 后台页面：`http://localhost:3514/admin`（或首页控制面板右上角齿轮入口）
+- 支持新增/编辑/删除景点：名称、经纬度、所属区域、开放时间、推荐停留时长、类型、描述
+- 经纬度可留空；**坐标缺失的景点不参与路径计算**（前端禁用选择，后端拒绝规划）
+- 管理接口：`GET/POST /api/admin/nodes`、`PUT/DELETE /api/admin/nodes/{id}`
 
 文档索引：见 [docs/README.md](./docs/README.md)。
 
@@ -20,6 +26,7 @@
 
 ## 🔗 服务地址
 - 前端：http://localhost:3514
+- 景点维护后台：http://localhost:3514/admin
 - 后端健康检查：http://localhost:8514/api/health
 - 节点列表：http://localhost:8514/api/nodes
 - 数据库：localhost:5514（db: cq_travel / user: cq / pass: cq）

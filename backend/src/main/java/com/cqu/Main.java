@@ -3,7 +3,7 @@ package com.cqu;
 import com.cqu.handler.RequestHandler;
 import com.cqu.service.DataLoader;
 import com.cqu.service.Db;
-import com.cqu.service.GraphService;
+import com.cqu.service.GraphManager;
 import com.cqu.service.NodeRepository;
 import com.sun.net.httpserver.HttpServer;
 
@@ -27,13 +27,14 @@ public class Main {
             logger.log(Level.INFO, "Seeded nodes into database from nodes.csv");
         }
 
-        GraphService graphService = new GraphService(repo.findAllAsMap(), dataLoader.loadEdgeListOrEmpty());
-        RequestHandler handler = new RequestHandler(graphService);
+        GraphManager graphManager = new GraphManager(repo, dataLoader.loadEdgeListOrEmpty());
+        RequestHandler handler = new RequestHandler(graphManager, repo);
 
         HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
         server.createContext("/api/health", handler::handleHealth);
         server.createContext("/api/nodes", handler::handleNodes);
         server.createContext("/api/path", handler::handlePath);
+        server.createContext("/api/admin/nodes", handler::handleAdminNodes);
         server.setExecutor(Executors.newFixedThreadPool(Math.max(4, Runtime.getRuntime().availableProcessors())));
         server.start();
         logger.log(Level.INFO, "Backend started on port " + port);
