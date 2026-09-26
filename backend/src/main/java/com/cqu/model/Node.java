@@ -15,11 +15,13 @@ public class Node {
     @Column(name = "name", nullable = false)
     private String name;
 
-    @Column(name = "lat", nullable = false)
-    private double lat;
+    /** 纬度；坐标缺失时为 null，该节点不参与路径计算 */
+    @Column(name = "lat")
+    private Double lat;
 
-    @Column(name = "lng", nullable = false)
-    private double lng;
+    /** 经度；坐标缺失时为 null，该节点不参与路径计算 */
+    @Column(name = "lng")
+    private Double lng;
 
     @Column(name = "node_type")
     private String type;
@@ -27,16 +29,40 @@ public class Node {
     @Column(name = "description", length = 2000)
     private String desc;
 
+    /** 所属区域，如：渝中区、沙坪坝区 */
+    @Column(name = "region")
+    private String region;
+
+    /** 开放时间，自由文本，如：09:00-17:30 */
+    @Column(name = "opening_hours")
+    private String openingHours;
+
+    /** 推荐停留时长（分钟） */
+    @Column(name = "recommended_stay_minutes")
+    private Integer recommendedStayMinutes;
+
     public Node() {
     }
 
     public Node(String id, String name, double lat, double lng, String type, String desc) {
+        this(id, name, Double.valueOf(lat), Double.valueOf(lng), type, desc, null, null, null);
+    }
+
+    public Node(String id, String name, Double lat, Double lng, String type, String desc,
+                String region, String openingHours, Integer recommendedStayMinutes) {
         this.id = id;
         this.name = name;
         this.lat = lat;
         this.lng = lng;
         this.type = type;
         this.desc = desc;
+        this.region = region;
+        this.openingHours = openingHours;
+        this.recommendedStayMinutes = recommendedStayMinutes;
+    }
+
+    public boolean hasCoordinates() {
+        return lat != null && lng != null;
     }
 
     public String getId() {
@@ -55,19 +81,19 @@ public class Node {
         this.name = name;
     }
 
-    public double getLat() {
+    public Double getLat() {
         return lat;
     }
 
-    public void setLat(double lat) {
+    public void setLat(Double lat) {
         this.lat = lat;
     }
 
-    public double getLng() {
+    public Double getLng() {
         return lng;
     }
 
-    public void setLng(double lng) {
+    public void setLng(Double lng) {
         this.lng = lng;
     }
 
@@ -85,5 +111,29 @@ public class Node {
 
     public void setDesc(String desc) {
         this.desc = desc;
+    }
+
+    public String getRegion() {
+        return region;
+    }
+
+    public void setRegion(String region) {
+        this.region = region;
+    }
+
+    public String getOpeningHours() {
+        return openingHours;
+    }
+
+    public void setOpeningHours(String openingHours) {
+        this.openingHours = openingHours;
+    }
+
+    public Integer getRecommendedStayMinutes() {
+        return recommendedStayMinutes;
+    }
+
+    public void setRecommendedStayMinutes(Integer recommendedStayMinutes) {
+        this.recommendedStayMinutes = recommendedStayMinutes;
     }
 }

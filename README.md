@@ -6,10 +6,17 @@
 - 数据库：PostgreSQL 15
 
 ## 📦 数据文件
-- `backend/src/main/resources/nodes.csv`：景点节点（必需）
+- `backend/src/main/resources/nodes.csv`：景点节点（首启数据库为空时导入；运行期以数据库为准，可在后台在线维护）
 - `backend/src/main/resources/edges.csv`：边数据（可选，存在则优先使用；否则按地理距离自动生成边）
 
+`nodes.csv` 必需列为 `id,name`；`lat,lng` 可同时缺省（坐标缺失的景点可维护、可展示，但**不参与路径计算**）。可选列：`type`、`desc`、`region`、`opening_hours`、`recommended_stay_minutes`。
+
 `edges.csv` 格式：至少包含表头 `from,to`；可选第三列 `distance_meters`（若缺省则按两点经纬度计算球面距离）。
+
+## 🧩 景点节点维护
+- 前端左侧“景点节点维护”可新增/编辑/删除景点：名称、经纬度、所属区域、开放时间、推荐停留时长
+- 接口：`POST /api/nodes`、`PUT /api/nodes/{id}`、`DELETE /api/nodes/{id}`；写操作后自动重建路径图
+- 起终点下拉与地图 Marker 仅包含坐标完整的景点
 
 文档索引：见 [docs/README.md](./docs/README.md)。
 

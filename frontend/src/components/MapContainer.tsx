@@ -5,7 +5,7 @@ import { MapContainer as LeafletMap, Marker, Polyline, Popup, TileLayer, useMap 
 import marker2x from "leaflet/dist/images/marker-icon-2x.png";
 import marker from "leaflet/dist/images/marker-icon.png";
 import shadow from "leaflet/dist/images/marker-shadow.png";
-import { Button } from "antd";
+import { Button, Tag } from "antd";
 import { useTravelStore } from "@/stores/useTravelStore";
 
 L.Icon.Default.mergeOptions({
@@ -33,9 +33,18 @@ export default function MapContainer() {
   const route = useTravelStore((s) => s.route);
 
   const center: [number, number] = [29.56301, 106.57577];
+
+  // 仅渲染坐标完整的节点；坐标缺失节点无法定位，也不参与路径计算
+  const locatedNodes = useMemo(
+    () => nodes.filter((n): n is typeof n & { lat: number; lng: number } => n.lat !== null && n.lng !== null),
+    [nodes],
+  );
+
   const routePoints = useMemo(() => {
     if (!route) return [] as Array<[number, number]>;
-    return route.pathNodes.map((n) => [n.lat, n.lng] as [number, number]);
+    return route.pathNodes
+      .filter((n) => Number.isFinite(n.lat) && Number.isFinite(n.lng))
+      .map((n) => [n.lat as number, n.lng as number] as [number, number]);
   }, [route]);
 
   return (
@@ -45,7 +54,7 @@ export default function MapContainer() {
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
 
-      {nodes.map((n) => {
+      {locatedNodes.map((n) => {
         const isStart = n.id === startId;
         const isEnd = n.id === endId;
         let icon: L.Icon | L.DivIcon | undefined;
@@ -71,6 +80,14 @@ export default function MapContainer() {
             <Popup>
               <div className="min-w-[220px]">
                 <div className="text-sm font-semibold text-slate-900">{n.name}</div>
+                <div className="mt-1 flex flex-wrap items-center gap-1 text-xs text-slate-500">
+                  {n.region ? <Tag className="m-0">{n.region}</Tag> : null}
+                  {n.type ? <Tag className="m-0">{n.type}</Tag> : null}
+                </div>
+                {n.openingHours ? <div className="mt-1 text-xs text-slate-500">开放：{n.openingHours}</div> : null}
+                {n.recommendedStayMinutes ? (
+                  <div className="text-xs text-slate-500">建议停留：{n.recommendedStayMinutes} 分钟</div>
+                ) : null}
                 {n.desc ? <div className="mt-1 text-xs text-slate-600">{n.desc}</div> : null}
                 <div className="mt-3 grid grid-cols-2 gap-2">
                   <Button size="small" onClick={() => setStartId(n.id)}>

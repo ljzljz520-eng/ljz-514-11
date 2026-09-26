@@ -5,6 +5,7 @@ import com.cqu.service.DataLoader;
 import com.cqu.service.Db;
 import com.cqu.service.GraphService;
 import com.cqu.service.NodeRepository;
+import com.cqu.service.SchemaMigration;
 import com.sun.net.httpserver.HttpServer;
 
 import java.net.InetSocketAddress;
@@ -20,6 +21,7 @@ public class Main {
 
         Db db = new Db();
         NodeRepository repo = new NodeRepository(db.emf());
+        SchemaMigration.relaxNodeCoordinates(db.emf());
         DataLoader dataLoader = new DataLoader();
 
         if (!repo.hasAnyNodes()) {
@@ -27,7 +29,7 @@ public class Main {
             logger.log(Level.INFO, "Seeded nodes into database from nodes.csv");
         }
 
-        GraphService graphService = new GraphService(repo.findAllAsMap(), dataLoader.loadEdgeListOrEmpty());
+        GraphService graphService = new GraphService(repo, dataLoader.loadEdgeListOrEmpty());
         RequestHandler handler = new RequestHandler(graphService);
 
         HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);

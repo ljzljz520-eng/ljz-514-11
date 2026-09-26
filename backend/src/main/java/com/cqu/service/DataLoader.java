@@ -35,7 +35,7 @@ public class DataLoader {
                 index.put(header[i].trim(), i);
             }
 
-            requireColumns(index, List.of("id", "name", "lat", "lng"));
+            requireColumns(index, List.of("id", "name"));
 
             String[] row;
             while ((row = reader.readNext()) != null) {
@@ -49,26 +49,31 @@ public class DataLoader {
                 }
 
                 String name = readRequiredColOrNull(row, index, "name");
-                String latRaw = readRequiredColOrNull(row, index, "lat");
-                String lngRaw = readRequiredColOrNull(row, index, "lng");
-                if (name == null || latRaw == null || lngRaw == null) {
-                    logger.log(Level.WARNING, "Skip invalid nodes.csv row: missing required columns for id=" + id);
+                if (name == null) {
+                    logger.log(Level.WARNING, "Skip invalid nodes.csv row: missing name for id=" + id);
                     continue;
                 }
 
-                double lat;
-                double lng;
-                try {
-                    lat = Double.parseDouble(latRaw);
-                    lng = Double.parseDouble(lngRaw);
-                } catch (NumberFormatException e) {
-                    logger.log(Level.WARNING, "Skip invalid nodes.csv row: invalid lat/lng for id=" + id);
+                // 经纬度允许缺省：坐标缺失的节点可被维护展示，但不参与路径计算
+                Double lat = readDoubleOrNull(row, index, "lat");
+                Double lng = readDoubleOrNull(row, index, "lng");
+                if ((lat == null) != (lng == null)) {
+                    logger.log(Level.WARNING, "Skip invalid nodes.csv row: only one of lat/lng present for id=" + id);
                     continue;
                 }
 
                 String type = readColOrNull(row, index, "type");
                 String desc = readColOrNull(row, index, "desc");
-                nodes.add(new Node(id.trim(), name == null ? "" : name.trim(), lat, lng, type, desc));
+                String region = readColOrNull(row, index, "region");
+                String openingHours = readColOrNull(row, index, "opening_hours");
+                if (openingHours == null) {
+                    openingHours = readColOrNull(row, index, "openingHours");
+                }
+                Integer stayMinutes = readIntOrNull(row, index, "recommended_stay_minutes");
+                if (stayMinutes == null) {
+                    stayMinutes = readIntOrNull(row, index, "recommendedStayMinutes");
+                }
+                nodes.add(new Node(id.trim(), name.trim(), lat, lng, type, desc, region, openingHours, stayMinutes));
             }
         } catch (Exception e) {
             throw new IllegalStateException("读取 nodes.csv 失败", e);
@@ -170,6 +175,18 @@ public class DataLoader {
         }
         try {
             return Double.parseDouble(raw);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private static Integer readIntOrNull(String[] row, Map<String, Integer> index, String key) {
+        String raw = readColOrNull(row, index, key);
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        try {
+            return Integer.parseInt(raw);
         } catch (NumberFormatException e) {
             return null;
         }
